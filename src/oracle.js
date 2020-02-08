@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import Web3 from "web3";
-import { STOCK_ORACLE_ABI, STOCK_ORACLE_ADDRESS } from "./quotecontract";
+import {
+  STOCK_ORACLE_ABI,
+  STOCK_ORACLE_ADDRESS,
+  APIKEY
+} from "./quotecontract";
 
 import { makeStyles } from "@material-ui/core/styles";
 import TextField from "@material-ui/core/TextField";
 import Button from "@material-ui/core/Button";
-
-const APIKEY = "QIHOUY8RAT3SPAK7";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -26,32 +28,47 @@ const useStyles = makeStyles(theme => ({
 //www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=MSFT&apikey=QIHOUY8RAT3SPAK7
 
 function App() {
-  const web3 = new Web3("http://localhost:7545");
-  const stockQuote = new web3.eth.Contract(
+  const web3 = new Web3(window.web3.currentProvider);
+
+  const accounts = web3.eth.getAccounts();
+
+  var stockQuote = new web3.eth.Contract(
     STOCK_ORACLE_ABI,
     STOCK_ORACLE_ADDRESS
   );
 
   const classes = useStyles();
   const [data, setData] = useState("");
+  const [volume, setVolume] = useState("");
+  const [price, setPrice] = useState("");
+  const [volumeCheck, setVolumeCheck] = useState("");
+  const [priceCheck, setPriceCheck] = useState("");
   const [input, setInput] = useState("");
   const [symbol, setSymbol] = useState("MSFT");
+  const [loaded, setLoaded] = useState(false);
 
-  async function getQuotes() {
-    const web3 = new Web3("http://localhost:7545");
-    const accounts = await web3.eth.getAccounts();
-    console.log(accounts);
-
-    const stockQuote = new web3.eth.Contract(
-      STOCK_ORACLE_ABI,
-      STOCK_ORACLE_ADDRESS
-    );
-
-    var retval = await stockQuote.methods
+  const updateData = async () => {
+    const accounts = await new web3.eth.getAccounts();
+    const fetchData = await stockQuote.methods
+      .setStock(web3.utils.fromAscii(symbol), price, volume)
+      .send({ from: accounts[0] });
+    console.log(fetchData);
+    // window.alert(`stock ${(data["01. symbol"], price, volume)} stored `);
+  };
+  const checkOracle = async () => {
+    const accounts = await new web3.eth.getAccounts();
+    const checkPrice = await stockQuote.methods
       .getStockPrice(web3.utils.fromAscii(symbol))
-      .call();
-    console.log(retval);
-  }
+      .call()
+      .then(res => setPriceCheck(res));
+    const checkVolume = await stockQuote.methods
+      .getStockVolume(web3.utils.fromAscii(symbol))
+      .call()
+      .then(res => setVolumeCheck(res));
+    window.alert(
+      `stock ${data["01. symbol"]}, price ${priceCheck}, Volume ${volumeCheck}`
+    );
+  };
 
   useEffect(() => {
     fetch(
@@ -60,9 +77,13 @@ function App() {
       .then(res => res.json())
       .then(res => {
         setData(res["Global Quote"]);
+        setLoaded(true);
+      })
+      .then(() => {
+        setPrice(parseInt(data["05. price"]));
+        setVolume(parseInt(data["06. volume"]));
       });
   }, [symbol]);
-  console.log(data);
 
   function handlingChange(event) {
     event.preventDefault();
@@ -73,68 +94,85 @@ function App() {
     event.preventDefault();
     setSymbol(input);
   }
-
-  return (
-    <div>
-      <h1>Stock Prices Oracle</h1>
+  if (loaded === false) {
+    return (
       <div>
-        <form className={classes.root} noValidate autoComplete="off">
-          <TextField
-            id="Stock-form"
-            label="Stock Symbol"
-            variant="outlined"
-            size="small"
-            onChange={handlingChange}
-          />
+        <h2>Loading...</h2>
+      </div>
+    );
+  } else {
+    return (
+      <div>
+        <h1>Stock Prices Oracle</h1>
+        <div>
+          <form className={classes.root} noValidate autoComplete="off">
+            <TextField
+              id="Stock-form-search"
+              label="Stock Symbol"
+              variant="outlined"
+              size="small"
+              onChange={handlingChange}
+            />
 
+            <div>
+              <Button variant="contained" color="primary" onClick={onclick}>
+                Get Quote
+              </Button>{" "}
+            </div>
+            <div>
+              <Button variant="contained" color="primary" onClick={updateData}>
+                Store Oracle
+              </Button>{" "}
+            </div>
+            <div>
+              <Button variant="contained" color="primary" onClick={checkOracle}>
+                Check Oracle
+              </Button>{" "}
+            </div>
+          </form>
           <div>
-            <Button variant="contained" color="primary" onClick={onclick}>
-              Get Quote
-            </Button>{" "}
+            <TextField
+              className={classes.result}
+              id="Stock-form-symbol"
+              label="Symbol"
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true
+              }}
+              value={data["01. symbol"]}
+            ></TextField>
           </div>
-        </form>
-        <div>
-          <TextField
-            className={classes.result}
-            id="Stock-form"
-            label="Symbol"
-            variant="outlined"
-            size="small"
-            InputLabelProps={{
-              shrink: true
-            }}
-            value={data["01. symbol"]}
-          ></TextField>
-        </div>
-        <div>
-          <TextField
-            className={classes.result}
-            id="Stock-form"
-            label="Price"
-            variant="outlined"
-            size="small"
-            InputLabelProps={{
-              shrink: true
-            }}
-            value={data["05. price"]}
-          ></TextField>
-        </div>
-        <div>
-          <TextField
-            className={classes.result}
-            id="Stock-form"
-            label="Volume"
-            variant="outlined"
-            size="small"
-            InputLabelProps={{
-              shrink: true
-            }}
-            value={data["06. volume"]}
-          ></TextField>
+          <div>
+            <TextField
+              className={classes.result}
+              id="Stock-form-price"
+              label="Price"
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true
+              }}
+              value={data["05. price"]}
+            ></TextField>
+          </div>
+          <div>
+            <TextField
+              className={classes.result}
+              id="Stock-form-volume"
+              label="Volume"
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true
+              }}
+              value={data["06. volume"]}
+            ></TextField>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export default App;
