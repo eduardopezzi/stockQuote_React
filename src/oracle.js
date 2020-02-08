@@ -52,15 +52,13 @@ function App() {
     const fetchData = await stockQuote.methods
       .setStock(web3.utils.fromAscii(symbol), price, volume)
       .send({ from: accounts[0] });
-    console.log(fetchData);
-    // window.alert(`stock ${(data["01. symbol"], price, volume)} stored `);
   };
   const checkOracle = async () => {
     const accounts = await new web3.eth.getAccounts();
     const checkPrice = await stockQuote.methods
       .getStockPrice(web3.utils.fromAscii(symbol))
       .call()
-      .then(res => setPriceCheck(res));
+      .then(res => setPriceCheck(res / 100));
     const checkVolume = await stockQuote.methods
       .getStockVolume(web3.utils.fromAscii(symbol))
       .call()
@@ -76,12 +74,11 @@ function App() {
     )
       .then(res => res.json())
       .then(res => {
-        setData(res["Global Quote"]);
+        const newData = res["Global Quote"];
+        setPrice(parseInt(newData["05. price"] * 100));
+        setVolume(parseInt(newData["06. volume"]));
+        setData(newData);
         setLoaded(true);
-      })
-      .then(() => {
-        setPrice(parseInt(data["05. price"]));
-        setVolume(parseInt(data["06. volume"]));
       });
   }, [symbol]);
 
